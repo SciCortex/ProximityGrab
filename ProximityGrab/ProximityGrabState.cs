@@ -31,8 +31,16 @@ internal sealed class ProximityGrabState
     public Hand? GestureHand;
     public bool LastGrabResult;
 
+    // Triple-grab chain (see TripleGrab).
+    public int TripleCount;
+    public GrabGestureKind TripleKind;
+    public double TripleLastTime;
+
     // Missed-pinch feedback rig (local slots, built on first miss).
     public MissEffect? MissEffect;
+
+    // Triple-grab stash confirmation (local slots, built on first stash).
+    public StashEffect? StashEffect;
 
     private static readonly ConditionalWeakTable<InteractionHandler, ProximityGrabState> Table = new();
 

@@ -109,6 +109,14 @@ public class ProximityGrabMod : ResoniteMod
     internal static readonly ModConfigurationKey<float> PrecisionRadiusStepKey =
         new("PrecisionRadiusStep", "Pinch grab sphere sweep radius step", () => 0.01f, valueValidator: IsNonNegativeFinite);
 
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> TripleGrabEnabledKey =
+        new("TripleGrabEnabled", "Triple grab stashes the object on your avatar", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<float> TripleGrabSecondsKey =
+        new("TripleGrabSeconds", "Max seconds between grabs of a triple grab", () => 0.6f, valueValidator: IsNonNegativeFinite);
+
     internal static ModConfiguration? Config;
 
     // Gesture toggles (hot-path source of truth, mirrored from config).
@@ -143,6 +151,10 @@ public class ProximityGrabMod : ResoniteMod
     internal static float PinchEngageDistance = PinchEngageDistanceKey.Value;
     internal static float PinchReleaseDistance = PinchReleaseDistanceKey.Value;
     internal static float PinchMaxIndexCurlDegrees = PinchMaxIndexCurlDegreesKey.Value;
+
+    // Triple grab (stash held object under the user root)
+    internal static bool TripleGrabEnabled = TripleGrabEnabledKey.Value;
+    internal static float TripleGrabSeconds = TripleGrabSecondsKey.Value;
 
     // Precision grab sphere sweep
     internal static float PrecisionMinRadius = PrecisionMinRadiusKey.Value;
@@ -199,6 +211,8 @@ public class ProximityGrabMod : ResoniteMod
         PinchEngageDistance = PinchEngageDistanceKey.Value;
         PinchReleaseDistance = PinchReleaseDistanceKey.Value;
         PinchMaxIndexCurlDegrees = PinchMaxIndexCurlDegreesKey.Value;
+        TripleGrabEnabled = TripleGrabEnabledKey.Value;
+        TripleGrabSeconds = TripleGrabSecondsKey.Value;
         PrecisionMinRadius = PrecisionMinRadiusKey.Value;
         PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
         PrecisionRadiusStep = Math.Max(PrecisionRadiusStepKey.Value, 0.0005f);

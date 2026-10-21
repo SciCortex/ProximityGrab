@@ -24,6 +24,7 @@ internal static class FistGesture
     {
         var state = ProximityGrabState.Get(handler);
         MissEffect.Update(handler, state);
+        StashEffect.Update(handler, state);
 
         Devices.Clear();
         handler.World.InputInterface.GetDevices(Devices);
@@ -117,7 +118,12 @@ internal static class FistGesture
             state.ActiveGesture = gesture;
             state.GestureHand = ownHand;
             state.GestureDriven = true;
+            state.LastGrabResult = false;
             Methods.StartGrab.Invoke(handler, null);
+            if (state.LastGrabResult)
+                TripleGrab.OnGestureGrab(handler, state, gesture);
+            else
+                TripleGrab.OnGestureMiss(state);
         }
         else if (state.ProximityGrabActive)
         {
