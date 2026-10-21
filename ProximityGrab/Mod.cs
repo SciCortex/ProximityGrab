@@ -114,8 +114,12 @@ public class ProximityGrabMod : ResoniteMod
         new("TripleGrabEnabled", "Triple grab stashes the object on your avatar", () => true);
 
     [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<int> TripleGrabCountKey =
+        new("TripleGrabCount", "Grabs in a row that stash the object (2 or 3)", () => 2, valueValidator: IsTwoOrThree);
+
+    [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> TripleGrabSecondsKey =
-        new("TripleGrabSeconds", "Max seconds between grabs of a triple grab", () => 0.6f, valueValidator: IsNonNegativeFinite);
+        new("TripleGrabSeconds", "Max seconds between grabs of a triple grab", () => 0.4f, valueValidator: IsNonNegativeFinite);
 
     internal static ModConfiguration? Config;
 
@@ -154,6 +158,7 @@ public class ProximityGrabMod : ResoniteMod
 
     // Triple grab (stash held object under the user root)
     internal static bool TripleGrabEnabled = TripleGrabEnabledKey.Value;
+    internal static int TripleGrabCount = TripleGrabCountKey.Value;
     internal static float TripleGrabSeconds = TripleGrabSecondsKey.Value;
 
     // Precision grab sphere sweep
@@ -186,6 +191,8 @@ public class ProximityGrabMod : ResoniteMod
         Msg("ProximityGrab loaded. Fist = proximity grab, pinch = precision grab (fist wins) while hands are tracked.");
     }
 
+    private static bool IsTwoOrThree(int value) => value is 2 or 3;
+
     private static bool IsNonNegativeFinite(float value) =>
         float.IsFinite(value) && value >= 0f;
 
@@ -212,6 +219,7 @@ public class ProximityGrabMod : ResoniteMod
         PinchReleaseDistance = PinchReleaseDistanceKey.Value;
         PinchMaxIndexCurlDegrees = PinchMaxIndexCurlDegreesKey.Value;
         TripleGrabEnabled = TripleGrabEnabledKey.Value;
+        TripleGrabCount = TripleGrabCountKey.Value;
         TripleGrabSeconds = TripleGrabSecondsKey.Value;
         PrecisionMinRadius = PrecisionMinRadiusKey.Value;
         PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;

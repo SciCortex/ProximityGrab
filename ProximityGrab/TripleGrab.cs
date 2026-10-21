@@ -13,7 +13,7 @@ using HarmonyLib;
 
 namespace ProximityGrab;
 
-// Triple grab: three successful gesture grabs of the same kind (fist or pinch),
+// Triple grab: TripleGrabCount (2 or 3, default 3) successful gesture grabs of the same kind (fist or pinch),
 // each within TripleGrabSeconds of the previous one, stash the held object on
 // the user root so it follows the user around. The stash works by retargeting
 // the Grabbable's remembered pre-grab parent, so the engine's own release path
@@ -46,7 +46,7 @@ internal static class TripleGrab
         state.TripleCount = chained ? state.TripleCount + 1 : 1;
         state.TripleKind = kind;
         state.TripleLastTime = now;
-        if (state.TripleCount < 3)
+        if (state.TripleCount < ProximityGrabMod.TripleGrabCount)
             return;
         state.TripleCount = 0;
         Stash(handler);
