@@ -81,7 +81,12 @@ internal static class Patch_InteractionHandler_Grab
             __result = state.ActiveGesture == GrabGestureKind.Pinch
                 ? PrecisionGrab.TryGrab(__instance, state.GestureHand, state.GestureFinger)
                 : (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
-            __result = TwoHandGrab.SuppressScaling(__instance, __result);
+            __result = TwoHandGrab.SuppressScaling(__instance, __result, out bool landedOnHeld);
+            // The grab picked the held object where the sweep check above
+            // expected something else (the engine's hand grab type can change
+            // what a grab reaches): hold it with both hands after all.
+            if (landedOnHeld && !__result && TwoHandGrab.TryStart(__instance, state, landedOnHeld: true))
+                __result = true;
         }
         catch (System.Exception e)
         {

@@ -68,19 +68,25 @@ internal static class TwoHandGrab
     // turns into that Grabber's scale reference (Grabber.Grab, the
     // _scaleReference branch) and reports success. Gesture grabs never scale:
     // drop the reference before Grabber.Update applies it, and report a grab
-    // only if something was actually picked up.
-    internal static bool SuppressScaling(InteractionHandler handler, bool grabbed)
+    // only if something was actually picked up. `landedOnHeld` says the grab
+    // went to an object the other hand holds.
+    internal static bool SuppressScaling(InteractionHandler handler, bool grabbed, out bool landedOnHeld)
     {
+        landedOnHeld = false;
         Grabber? grabber = handler.Grabber;
         if (grabber == null || !grabber.IsScaling)
             return grabbed;
         ((SyncRef<Grabber>)ScaleReference.GetValue(grabber)!).Target = null!;
+        landedOnHeld = true;
         return grabber.IsHoldingObjects;
     }
 
     // Called for a gesture grab before the normal grab runs. Starts a session
     // when this hand's grab sweep touches something the other hand holds.
-    internal static bool TryStart(InteractionHandler handler, ProximityGrabState state)
+    // `landedOnHeld` is for after a normal grab that went to the held object
+    // itself (see SuppressScaling): the engine has already decided, so no
+    // sweep is checked.
+    internal static bool TryStart(InteractionHandler handler, ProximityGrabState state, bool landedOnHeld = false)
     {
         if (state.TwoHand != null || !TryGetOther(handler, out InteractionHandler? other, out ProximityGrabState? otherState))
             return false;
@@ -88,8 +94,8 @@ internal static class TwoHandGrab
         Grabber? otherGrabber = other.Grabber;
         if (grabber == null || otherGrabber == null || otherState.TwoHand != null || !otherGrabber.IsHoldingObjects)
             return false;
-        if (!TryGetGrabPoint(handler, state, out float3 point, out float radius)
-            || !TouchesHeld(handler, point, radius, otherGrabber, grabber)
+        if (!TryGetGrabPoint(handler, state, out float3 point, out float radius, out bool pinch)
+            || (!landedOnHeld && !TouchesHeldFirst(handler, pinch, point, radius, otherGrabber, grabber))
             || !TryGetGrabPoint(other, otherState, out float3 otherPoint, out _))
             return false;
         TwoHandSession? session = Begin(other, otherGrabber, otherPoint, handler, grabber, point);
@@ -331,31 +337,67 @@ internal static class TwoHandGrab
     // matches the corresponding grab sweep.
     private static bool TryGetGrabPoint(InteractionHandler handler, ProximityGrabState state, out float3 point, out float radius)
     {
+        return TryGetGrabPoint(handler, state, out point, out radius, out _);
+    }
+
+    private static bool TryGetGrabPoint(InteractionHandler handler, ProximityGrabState state, out float3 point, out float radius, out bool pinch)
+    {
         float scale = handler.LocalUserRoot?.GlobalScale ?? 1f;
         if (state.ActiveGesture == GrabGestureKind.Pinch && state.GestureHand != null
             && PrecisionGrab.TryGetPinchPoints(handler, state.GestureHand, state.GestureFinger, out float3 tip, out float3 thumb))
         {
             point = MathX.Lerp(tip, thumb, 0.5f);
             radius = ProximityGrabMod.PrecisionMaxRadius * scale;
+            pinch = true;
             return true;
         }
+        pinch = false;
         Grabber? grabber = handler.Grabber;
         point = grabber?.Slot.GlobalPosition ?? float3.Zero;
         radius = InteractionHandler.GRAB_RADIUS * scale;
         return grabber != null;
     }
 
+    // Whether a second-hand grab here should start a two-hand hold rather
+    // than go to the normal grab, deciding as that grab would. The pinch grab
+    // (PrecisionGrab.TryGrab) sweeps outward and takes the first grabbable it
+    // reaches, so the nearer of the held object and a separately grabbable
+    // part of it (a pen's lid) wins. The fist grab ranks grabbable parts over
+    // the held object (Grabber.Grab's sort), so any part touched wins.
+    private static bool TouchesHeldFirst(InteractionHandler handler, bool pinch, float3 point, float radius,
+        Grabber otherGrabber, Grabber grabber)
+    {
+        if (!pinch)
+            return Overlap(handler, point, radius, otherGrabber, grabber) == Touch.Held;
+        float scale = handler.LocalUserRoot?.GlobalScale ?? 1f;
+        for (float r = ProximityGrabMod.PrecisionMinRadius;
+             r < ProximityGrabMod.PrecisionMaxRadius;
+             r += ProximityGrabMod.PrecisionRadiusStep)
+        {
+            Touch touch = Overlap(handler, point, scale * r, otherGrabber, grabber);
+            if (touch != Touch.None)
+                return touch == Touch.Held;
+        }
+        return false;
+    }
+
     // Whether the sphere touches anything under an object `otherGrabber`
-    // holds. With `grabber`, a separately grabbable part of the held object
-    // (a pen's lid) is left to the normal grab: if the sphere touches one,
-    // this is false, as the engine's grab would take that part.
-    private static bool TouchesHeld(InteractionHandler handler, float3 point, float radius, Grabber otherGrabber, Grabber? grabber = null)
+    // holds.
+    private static bool TouchesHeld(InteractionHandler handler, float3 point, float radius, Grabber otherGrabber)
+    {
+        return Overlap(handler, point, radius, otherGrabber, null) == Touch.Held;
+    }
+
+    // What the sphere touches under objects `otherGrabber` holds. With
+    // `grabber`, a separately grabbable part touched anywhere in the sphere
+    // makes it Part.
+    private static Touch Overlap(InteractionHandler handler, float3 point, float radius, Grabber otherGrabber, Grabber? grabber)
     {
         List<ICollider> colliders = Pool.BorrowList<ICollider>();
         try
         {
             handler.World.Physics.SphereOverlap(in point, radius, colliders);
-            bool touches = false;
+            Touch result = Touch.None;
             foreach (ICollider collider in colliders)
             {
                 Slot? slot = collider.Slot;
@@ -364,13 +406,13 @@ internal static class TwoHandGrab
                 switch (Classify(slot, otherGrabber, grabber))
                 {
                     case Touch.Part:
-                        return false;
+                        return Touch.Part;
                     case Touch.Held:
-                        touches = true;
+                        result = Touch.Held;
                         break;
                 }
             }
-            return touches;
+            return result;
         }
         finally
         {
