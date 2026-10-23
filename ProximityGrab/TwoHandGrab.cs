@@ -92,45 +92,59 @@ internal static class TwoHandGrab
         return true;
     }
 
-    // Runs every frame for each local handler; only the primary drives the pose.
+    // Runs every frame for each local handler; only the primary drives the
+    // pose and shows the tether.
     internal static void Update(InteractionHandler handler)
     {
         ProximityGrabState state = ProximityGrabState.Get(handler);
+        if (!Drive(handler, state))
+            TetherEffect.Hide(state);
+    }
+
+    // True while this hand is the primary of a live session.
+    private static bool Drive(InteractionHandler handler, ProximityGrabState state)
+    {
         TwoHandSession? session = state.TwoHand;
         if (session == null || session.Primary != handler)
-            return;
+            return false;
         Grabber? primary = session.Primary.Grabber;
         Grabber? secondary = session.Secondary.Grabber;
         if (primary == null || secondary == null || session.Secondary.IsRemoved
             || !ProximityGrabState.Get(session.Secondary).ProximityGrabActive)
         {
             End(session);
-            return;
+            return false;
         }
         // Dropped, destroyed or taken by someone else: stop posing it.
         session.Objects.RemoveAll(h => h.Grabbable.IsRemoved || h.Grabbable.Grabber != primary);
         if (session.Objects.Count == 0)
         {
             End(session);
-            return;
+            return false;
         }
         float3 a1 = primary.Slot.LocalPointToGlobal(session.PrimaryAnchor);
         float3 a2 = secondary.Slot.LocalPointToGlobal(session.SecondaryAnchor);
         float3 u1 = primary.Slot.GlobalRotation * session.PrimaryUp;
         float3 u2 = secondary.Slot.GlobalRotation * session.SecondaryUp;
-        if (!TryFrame(a1, a2, u1 + u2, u1, MinSpan * (handler.LocalUserRoot?.GlobalScale ?? 1f), out floatQ frame))
-            return;
-        foreach (TwoHandSession.Held held in session.Objects)
+        if (TryFrame(a1, a2, u1 + u2, u1, MinSpan * (handler.LocalUserRoot?.GlobalScale ?? 1f), out floatQ frame))
         {
-            Slot slot = held.Grabbable.Slot;
-            slot.GlobalPosition = a1 + frame * held.Position;
-            slot.GlobalRotation = frame * held.Rotation;
+            foreach (TwoHandSession.Held held in session.Objects)
+            {
+                Slot slot = held.Grabbable.Slot;
+                slot.GlobalPosition = a1 + frame * held.Position;
+                slot.GlobalRotation = frame * held.Rotation;
+            }
         }
-        if (ProximityGrabMod.DebugShowPinch && handler.World != Userspace.UserspaceWorld)
-        {
-            colorX color = colorX.Yellow;
-            handler.Debug.Line(in a1, in a2, in color, 0.002f * (handler.LocalUserRoot?.GlobalScale ?? 1f), local: true);
-        }
+        if (!ProximityGrabMod.TwoHandTether || handler.World == Userspace.UserspaceWorld)
+            return false;
+        // The tether joins where the hands are grabbing now (the live pinch
+        // points), not the hand-rigid anchors, so it stays on the fingers.
+        if (!TryGetGrabPoint(session.Primary, state, out float3 from, out _))
+            from = a1;
+        if (!TryGetGrabPoint(session.Secondary, ProximityGrabState.Get(session.Secondary), out float3 to, out _))
+            to = a2;
+        TetherEffect.Show(handler, state, from, to);
+        return true;
     }
 
     // Called when a hand's gesture grab ends, before EndGrab. Either hand

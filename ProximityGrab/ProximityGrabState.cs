@@ -39,6 +39,9 @@ internal sealed class ProximityGrabState
     // Two-hand hold this hand takes part in (see TwoHandGrab); shared by both hands.
     public TwoHandSession? TwoHand;
 
+    // Two-hand tether line (local slots, built on first two-hand hold).
+    public TetherEffect? Tether;
+
     // Missed-pinch feedback rig (local slots, built on first miss).
     public MissEffect? MissEffect;
 

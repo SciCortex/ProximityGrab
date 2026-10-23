@@ -121,6 +121,10 @@ public class ProximityGrabMod : ResoniteMod
     internal static readonly ModConfigurationKey<float> TripleGrabSecondsKey =
         new("TripleGrabSeconds", "Max seconds between grabs of a triple grab", () => 0.4f, valueValidator: IsNonNegativeFinite);
 
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> TwoHandTetherKey =
+        new("TwoHandTether", "Show a dashed line between hands holding the same object", () => true);
+
     internal static ModConfiguration? Config;
 
     // Gesture toggles (hot-path source of truth, mirrored from config).
@@ -160,6 +164,9 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool TripleGrabEnabled = TripleGrabEnabledKey.Value;
     internal static int TripleGrabCount = TripleGrabCountKey.Value;
     internal static float TripleGrabSeconds = TripleGrabSecondsKey.Value;
+
+    // Two-hand hold tether line
+    internal static bool TwoHandTether = TwoHandTetherKey.Value;
 
     // Precision grab sphere sweep
     internal static float PrecisionMinRadius = PrecisionMinRadiusKey.Value;
@@ -221,6 +228,7 @@ public class ProximityGrabMod : ResoniteMod
         TripleGrabEnabled = TripleGrabEnabledKey.Value;
         TripleGrabCount = TripleGrabCountKey.Value;
         TripleGrabSeconds = TripleGrabSecondsKey.Value;
+        TwoHandTether = TwoHandTetherKey.Value;
         PrecisionMinRadius = PrecisionMinRadiusKey.Value;
         PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
         PrecisionRadiusStep = Math.Max(PrecisionRadiusStepKey.Value, 0.0005f);
