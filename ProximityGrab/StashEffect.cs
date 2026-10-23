@@ -85,7 +85,10 @@ internal sealed class StashEffect
 
     private void Start(InteractionHandler handler, Slot target)
     {
-        BoundingBox box = target.ComputeBoundingBox();
+        // Visible meshes only: colliders (trigger volumes), particle systems
+        // and disabled renderers count toward bounds too, and can make a small
+        // object's box huge.
+        BoundingBox box = target.ComputeBoundingBox(filter: b => b is MeshRenderer && b.Enabled);
         float3 center = target.GlobalPosition;
         float radius = 0.12f * (handler.LocalUserRoot?.GlobalScale ?? 1f);
         if (box.IsValid)
