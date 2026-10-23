@@ -89,7 +89,7 @@ internal static class TwoHandGrab
         if (grabber == null || otherGrabber == null || otherState.TwoHand != null || !otherGrabber.IsHoldingObjects)
             return false;
         if (!TryGetGrabPoint(handler, state, out float3 point, out float radius)
-            || !TouchesHeld(handler, point, radius, otherGrabber)
+            || !TouchesHeld(handler, point, radius, otherGrabber, grabber)
             || !TryGetGrabPoint(other, otherState, out float3 otherPoint, out _))
             return false;
         TwoHandSession? session = Begin(other, otherGrabber, otherPoint, handler, grabber, point);
@@ -345,28 +345,77 @@ internal static class TwoHandGrab
         return grabber != null;
     }
 
-    private static bool TouchesHeld(InteractionHandler handler, float3 point, float radius, Grabber otherGrabber)
+    // Whether the sphere touches anything under an object `otherGrabber`
+    // holds. With `grabber`, a separately grabbable part of the held object
+    // (a pen's lid) is left to the normal grab: if the sphere touches one,
+    // this is false, as the engine's grab would take that part.
+    private static bool TouchesHeld(InteractionHandler handler, float3 point, float radius, Grabber otherGrabber, Grabber? grabber = null)
     {
         List<ICollider> colliders = Pool.BorrowList<ICollider>();
         try
         {
             handler.World.Physics.SphereOverlap(in point, radius, colliders);
+            bool touches = false;
             foreach (ICollider collider in colliders)
             {
                 Slot? slot = collider.Slot;
                 if (slot == null)
                     continue;
-                foreach (IGrabbable held in otherGrabber.GrabbedObjects)
+                switch (Classify(slot, otherGrabber, grabber))
                 {
-                    if (held is Grabbable && !held.IsRemoved && slot.IsChildOf(held.Slot, includeSelf: true))
-                        return true;
+                    case Touch.Part:
+                        return false;
+                    case Touch.Held:
+                        touches = true;
+                        break;
                 }
             }
-            return false;
+            return touches;
         }
         finally
         {
             Pool.Return(ref colliders);
         }
+    }
+
+    private enum Touch
+    {
+        None,
+        Held,
+        Part,
+    }
+
+    // Walks up from a touched collider's slot like Grabber.FindGrabbableInParents:
+    // the first grabbable found is what a grab there would take. Reaching a
+    // held object's slot first means the held object itself; an enabled
+    // Grabbable `grabber` can take on the way up is a part of it.
+    private static Touch Classify(Slot slot, Grabber otherGrabber, Grabber? grabber)
+    {
+        bool underHeld = false;
+        foreach (IGrabbable held in otherGrabber.GrabbedObjects)
+        {
+            if (held is Grabbable && !held.IsRemoved && slot.IsChildOf(held.Slot, includeSelf: true))
+            {
+                underHeld = true;
+                break;
+            }
+        }
+        if (!underHeld)
+            return Touch.None;
+        if (grabber == null)
+            return Touch.Held;
+        for (Slot? s = slot; s != null && !s.IsRootSlot; s = s.Parent)
+        {
+            foreach (IGrabbable held in otherGrabber.GrabbedObjects)
+            {
+                if (held is Grabbable && !held.IsRemoved && held.Slot == s)
+                    return Touch.Held;
+            }
+            if (s.GetComponent<IGrabBlock>(null!, excludeDisabled: true) != null)
+                return Touch.Held;
+            if (s.GetComponent((IGrabbable g) => g.CanGrab(grabber), excludeDisabled: true) != null)
+                return Touch.Part;
+        }
+        return Touch.Held;
     }
 }
