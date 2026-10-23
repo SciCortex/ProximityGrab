@@ -50,6 +50,8 @@ internal sealed class TwoHandSession
 internal static class TwoHandGrab
 {
     private static readonly FieldInfo ScaleReference = AccessTools.Field(typeof(Grabber), "_scaleReference")!;
+    private static readonly FieldInfo GrabbedObjects = AccessTools.Field(typeof(Grabber), "_grabbedObjects")!;
+    private static readonly FieldInfo GrabbableGrabber = AccessTools.Field(typeof(Grabbable), "_grabber")!;
 
     // Anchors closer than this (user space, m) give no usable line.
     private const float MinSpan = 0.01f;
@@ -132,13 +134,43 @@ internal static class TwoHandGrab
     }
 
     // Called when a hand's gesture grab ends, before EndGrab. Either hand
-    // letting go ends the session; the primary still holds the objects.
+    // letting go ends the session. The primary already holds the objects;
+    // when it is the one letting go they move to the secondary first, so
+    // EndGrab finds nothing to drop.
     internal static void OnRelease(InteractionHandler handler, ProximityGrabState state)
     {
         TwoHandSession? session = state.TwoHand;
         if (session == null)
             return;
         End(session);
+        if (session.Primary != handler || session.Secondary.IsRemoved
+            || !ProximityGrabState.Get(session.Secondary).ProximityGrabActive)
+            return;
+        Grabber? from = session.Primary.Grabber;
+        Grabber? to = session.Secondary.Grabber;
+        if (from != null && to != null)
+            HandOff(from, to, session.Objects);
+    }
+
+    // Moves held objects between the user's own Grabbers without a release
+    // and re-grab: Grabbable.Release reparents (or destroys, with
+    // DestroyOnRelease) even with events suppressed, and both ends would fire
+    // grab events and undo steps. The Grabbable keeps its remembered parent,
+    // so the eventual release drops it as if the first hand had.
+    private static void HandOff(Grabber from, Grabber to, List<TwoHandSession.Held> objects)
+    {
+        var fromList = (List<IGrabbable>)GrabbedObjects.GetValue(from)!;
+        var toList = (List<IGrabbable>)GrabbedObjects.GetValue(to)!;
+        foreach (TwoHandSession.Held held in objects)
+        {
+            Grabbable grabbable = held.Grabbable;
+            if (grabbable.IsRemoved || grabbable.Grabber != from)
+                continue;
+            ((SyncRef<Grabber>)GrabbableGrabber.GetValue(grabbable)!).Target = to;
+            grabbable.Slot.SetParent(to.HolderSlot, keepGlobalTransform: true);
+            fromList.Remove(grabbable);
+            toList.Add(grabbable);
+        }
     }
 
     private static TwoHandSession? Begin(InteractionHandler primary, Grabber primaryGrabber, float3 primaryPoint,
