@@ -45,6 +45,7 @@ internal static class Patch_InteractionHandler_OnCommonUpdate
             if (__instance.World.Focus == World.WorldFocus.Background)
                 return;
             FistGesture.Update(__instance);
+            TwoHandGrab.Update(__instance);
         }
         catch (System.Exception e)
         {
@@ -71,6 +72,12 @@ internal static class Patch_InteractionHandler_Grab
         state.GestureDriven = false;
         try
         {
+            if (TwoHandGrab.TryStart(__instance, state))
+            {
+                __result = true;
+                state.LastGrabResult = true;
+                return false;
+            }
             __result = state.ActiveGesture == GrabGestureKind.Pinch
                 ? PrecisionGrab.TryGrab(__instance, state.GestureHand, state.GestureFinger)
                 : (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);

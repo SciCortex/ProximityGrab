@@ -36,6 +36,9 @@ internal sealed class ProximityGrabState
     public GrabGestureKind TripleKind;
     public double TripleLastTime;
 
+    // Two-hand hold this hand takes part in (see TwoHandGrab); shared by both hands.
+    public TwoHandSession? TwoHand;
+
     // Missed-pinch feedback rig (local slots, built on first miss).
     public MissEffect? MissEffect;
 

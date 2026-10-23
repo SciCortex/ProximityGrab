@@ -494,6 +494,7 @@ internal static class FistGesture
 
     private static void Release(InteractionHandler handler, ProximityGrabState state)
     {
+        TwoHandGrab.OnRelease(handler, state);
         state.ProximityGrabActive = false;
         state.FistEngaged = false;
         state.PinchEngagedIndex = false;
