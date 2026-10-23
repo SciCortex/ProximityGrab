@@ -43,7 +43,7 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
-        new("DebugShowPinch", "Show grip debug visuals", () => true);
+        new("DebugShowPinch", "Show grip debug visuals", () => false);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugTextKey =
@@ -55,7 +55,7 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<PinchMissEffectKind> PinchMissEffectKey =
-        new("PinchMissEffect", "Missed pinch visual effect", () => PinchMissEffectKind.Random);
+        new("PinchMissEffect", "Missed pinch visual effect", () => PinchMissEffectKind.Sparks);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PinchMissFlashSecondsKey =
