@@ -14,8 +14,8 @@ using Renderite.Shared;
 namespace ProximityGrab;
 
 // One object held by both hands. The objects stay parented under the
-// primary (first) hand's Grabber; anchors and up vectors are stored in each
-// hand's Grabber slot space so they ride rigidly with the hands.
+// primary (first) hand's Grabber; anchors are stored in each hand's Grabber
+// slot space so they ride rigidly with the hands.
 internal sealed class TwoHandSession
 {
     public struct Held
@@ -31,8 +31,11 @@ internal sealed class TwoHandSession
     public readonly List<Held> Objects = new();
     public float3 PrimaryAnchor;
     public float3 SecondaryAnchor;
-    public float3 PrimaryUp;
-    public float3 SecondaryUp;
+    // Anchor frame (global), looking down the anchor line; updated each frame.
+    public floatQ Frame;
+    // Grabber rotations (global) as of the last update, for per-frame twist.
+    public floatQ PrimaryRotation;
+    public floatQ SecondaryRotation;
     public bool TetherShown;
 
     public TwoHandSession(InteractionHandler primary, InteractionHandler secondary)
@@ -45,9 +48,9 @@ internal sealed class TwoHandSession
 // Two-hand grab: a gesture grab with the free hand on an object the other
 // hand is gesture-holding adds a second anchor instead of the engine's
 // two-hand scaling. While both hold, the object pivots on the primary anchor
-// and aims along the line to the secondary anchor; roll about that line is
-// the average of both hands' twist (each hand carries the starting up vector
-// rigidly, and the two are summed).
+// and aims along the line to the secondary anchor. Roll about that line is
+// accumulated frame by frame from the hands' wrist twist about it (see
+// CombineTwist), so twisting either wrist turns the object with it.
 internal static class TwoHandGrab
 {
     private static readonly FieldInfo ScaleReference = AccessTools.Field(typeof(Grabber), "_scaleReference")!;
@@ -129,17 +132,33 @@ internal static class TwoHandGrab
         }
         float3 a1 = primary.Slot.LocalPointToGlobal(session.PrimaryAnchor);
         float3 a2 = secondary.Slot.LocalPointToGlobal(session.SecondaryAnchor);
-        float3 u1 = primary.Slot.GlobalRotation * session.PrimaryUp;
-        float3 u2 = secondary.Slot.GlobalRotation * session.SecondaryUp;
-        if (TryFrame(a1, a2, u1 + u2, u1, MinSpan * (handler.LocalUserRoot?.GlobalScale ?? 1f), out floatQ frame))
+        floatQ h1 = primary.Slot.GlobalRotation;
+        floatQ h2 = secondary.Slot.GlobalRotation;
+        float3 line = a2 - a1;
+        float length = line.Magnitude;
+        if (length >= MinSpan * (handler.LocalUserRoot?.GlobalScale ?? 1f))
         {
+            float3 forward = line / length;
+            float roll = CombineTwist(
+                Twist(h1 * session.PrimaryRotation.Inverted, forward),
+                Twist(h2 * session.SecondaryRotation.Inverted, forward));
+            // Swing the frame onto the new line by the shortest rotation, then
+            // roll it about the line.
+            floatQ frame = floatQ.AxisAngleRad(forward, roll)
+                * floatQ.FromToRotation(session.Frame * float3.Forward, forward)
+                * session.Frame;
+            // Re-square it so float error can't build up over the hold.
+            float3 up = frame * float3.Up;
+            session.Frame = floatQ.LookRotation(in forward, in up);
             foreach (TwoHandSession.Held held in session.Objects)
             {
                 Slot slot = held.Grabbable.Slot;
-                slot.GlobalPosition = a1 + frame * held.Position;
-                slot.GlobalRotation = frame * held.Rotation;
+                slot.GlobalPosition = a1 + session.Frame * held.Position;
+                slot.GlobalRotation = session.Frame * held.Rotation;
             }
         }
+        session.PrimaryRotation = h1;
+        session.SecondaryRotation = h2;
         if (!ProximityGrabMod.TwoHandTether || handler.World == Userspace.UserspaceWorld)
             return false;
         // The tether joins where the hands are grabbing now (the live pinch
@@ -210,13 +229,13 @@ internal static class TwoHandGrab
         float minSpan = MinSpan * (primary.LocalUserRoot?.GlobalScale ?? 1f);
         if (!TryFrame(primaryPoint, secondaryPoint, handUp, handForward, minSpan, out floatQ frame))
             return null;
-        float3 up = frame * float3.Up;
         var session = new TwoHandSession(primary, secondary)
         {
             PrimaryAnchor = primaryGrabber.Slot.GlobalPointToLocal(primaryPoint),
             SecondaryAnchor = secondaryGrabber.Slot.GlobalPointToLocal(secondaryPoint),
-            PrimaryUp = h1.Inverted * up,
-            SecondaryUp = h2.Inverted * up,
+            Frame = frame,
+            PrimaryRotation = h1,
+            SecondaryRotation = h2,
         };
         floatQ inverse = frame.Inverted;
         foreach (IGrabbable held in primaryGrabber.GrabbedObjects)
@@ -258,6 +277,32 @@ internal static class TwoHandGrab
             return false;
         frame = floatQ.LookRotation(in forward, in rollUp);
         return true;
+    }
+
+    // Rotation angle (radians) of `delta` about the unit `axis`: the twist
+    // part of its swing-twist decomposition, taken the short way round.
+    private static float Twist(floatQ delta, float3 axis)
+    {
+        float along = delta.x * axis.x + delta.y * axis.y + delta.z * axis.z;
+        float w = delta.w;
+        if (w < 0f)
+        {
+            along = -along;
+            w = -w;
+        }
+        return 2f * MathX.Atan2(along, w);
+    }
+
+    // One frame's roll from both hands' twist. Opposite twists add, so they
+    // cancel; twists the same way count once, at the larger, so turning both
+    // hands together (rolling a bar, or turning the body) rolls the object
+    // with them rather than twice as far. Either hand twisting alone rolls it
+    // fully.
+    private static float CombineTwist(float t1, float t2)
+    {
+        if (t1 * t2 <= 0f)
+            return t1 + t2;
+        return MathX.Abs(t1) > MathX.Abs(t2) ? t1 : t2;
     }
 
     private static bool TryPerpendicular(float3 v, float3 axis, out float3 result)
