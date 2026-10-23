@@ -33,6 +33,7 @@ internal sealed class TwoHandSession
     public float3 SecondaryAnchor;
     public float3 PrimaryUp;
     public float3 SecondaryUp;
+    public bool TetherShown;
 
     public TwoHandSession(InteractionHandler primary, InteractionHandler secondary)
     {
@@ -55,6 +56,10 @@ internal static class TwoHandGrab
 
     // Anchors closer than this (user space, m) give no usable line.
     private const float MinSpan = 0.01f;
+
+    // Fraction of the grab reach the secondary hand must come back within to
+    // hide a shown tether.
+    private const float TetherHideReach = 0.5f;
 
     // A Grabber that fails to grab an object held by the user's other Grabber
     // turns into that Grabber's scale reference (Grabber.Grab, the
@@ -141,8 +146,16 @@ internal static class TwoHandGrab
         // points), not the hand-rigid anchors, so it stays on the fingers.
         if (!TryGetGrabPoint(session.Primary, state, out float3 from, out _))
             from = a1;
-        if (!TryGetGrabPoint(session.Secondary, ProximityGrabState.Get(session.Secondary), out float3 to, out _))
+        if (!TryGetGrabPoint(session.Secondary, ProximityGrabState.Get(session.Secondary), out float3 to, out float reach))
             to = a2;
+        // Only while the secondary hand has drifted out of grab reach of the
+        // object, where the hold otherwise looks like action at a distance.
+        // Once shown, it takes a tighter reach to hide again, so it doesn't
+        // flicker at the edge.
+        float hideReach = session.TetherShown ? reach * TetherHideReach : reach;
+        session.TetherShown = !TouchesHeld(handler, to, hideReach, primary);
+        if (!session.TetherShown)
+            return false;
         TetherEffect.Show(handler, state, from, to);
         return true;
     }
