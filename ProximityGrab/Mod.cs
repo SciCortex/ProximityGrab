@@ -125,6 +125,26 @@ public class ProximityGrabMod : ResoniteMod
     internal static readonly ModConfigurationKey<bool> TwoHandTetherKey =
         new("TwoHandTether", "Show a dashed line between hands holding the same object", () => true);
 
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> GlitchMedianEnabledKey =
+        new("GlitchMedianEnabled", "Median-filter gesture readings to ignore tracking flickers", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<int> GlitchMedianFramesKey =
+        new("GlitchMedianFrames", "Frames in the gesture median filter (hides flickers under half this)", () => 5, valueValidator: IsMedianFrames);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> ReleaseGraceEnabledKey =
+        new("ReleaseGraceEnabled", "Hold on through brief gesture dropouts before releasing", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<float> ReleaseGraceSecondsKey =
+        new("ReleaseGraceSeconds", "Seconds a gesture must stay gone before the grab releases", () => 0.1f, valueValidator: IsNonNegativeFinite);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> GlitchLogKey =
+        new("GlitchLog", "Log gesture flickers and release delays (for tuning)", () => true);
+
     internal static ModConfiguration? Config;
 
     // Gesture toggles (hot-path source of truth, mirrored from config).
@@ -168,6 +188,13 @@ public class ProximityGrabMod : ResoniteMod
     // Two-hand hold tether line
     internal static bool TwoHandTether = TwoHandTetherKey.Value;
 
+    // Tracking-glitch tolerance (median filter on gesture readings, delayed release)
+    internal static bool GlitchMedianEnabled = GlitchMedianEnabledKey.Value;
+    internal static int GlitchMedianFrames = GlitchMedianFramesKey.Value;
+    internal static bool ReleaseGraceEnabled = ReleaseGraceEnabledKey.Value;
+    internal static float ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
+    internal static bool GlitchLog = GlitchLogKey.Value;
+
     // Precision grab sphere sweep
     internal static float PrecisionMinRadius = PrecisionMinRadiusKey.Value;
     internal static float PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
@@ -200,6 +227,8 @@ public class ProximityGrabMod : ResoniteMod
 
     private static bool IsTwoOrThree(int value) => value is 2 or 3;
 
+    private static bool IsMedianFrames(int value) => value >= 1 && value <= MedianFilter.MaxFrames;
+
     private static bool IsNonNegativeFinite(float value) =>
         float.IsFinite(value) && value >= 0f;
 
@@ -229,7 +258,12 @@ public class ProximityGrabMod : ResoniteMod
         TripleGrabCount = TripleGrabCountKey.Value;
         TripleGrabSeconds = TripleGrabSecondsKey.Value;
         TwoHandTether = TwoHandTetherKey.Value;
-        PrecisionMinRadius = PrecisionMinRadiusKey.Value;
+        GlitchMedianEnabled = GlitchMedianEnabledKey.Value;
+        GlitchMedianFrames = GlitchMedianFramesKey.Value;
+        ReleaseGraceEnabled = ReleaseGraceEnabledKey.Value;
+        ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
+        GlitchLog = GlitchLogKey.Value;
+        PrecisionMinRadius =PrecisionMinRadiusKey.Value;
         PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
         PrecisionRadiusStep = Math.Max(PrecisionRadiusStepKey.Value, 0.0005f);
         if (PinchEngageDistance >= PinchReleaseDistance)

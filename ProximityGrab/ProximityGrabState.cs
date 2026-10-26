@@ -31,6 +31,16 @@ internal sealed class ProximityGrabState
     public Hand? GestureHand;
     public bool LastGrabResult;
 
+    // Tracking-glitch tolerance (see MedianFilter, FistGesture.Update).
+    public readonly MedianFilter FistAverage = new();
+    public readonly MedianFilter FistMin = new();
+    public readonly MedianFilter FistMinJoint = new();
+    public readonly MedianFilter[] PinchDistance = { new(), new(), new() };   // index, middle, ring
+    public readonly MedianFilter[] PinchCurl = { new(), new(), new() };
+    public bool FilterDisagrees;    // this frame: a raw reading would have flipped a gesture the median held
+    public int FilterHiddenFrames;  // length of the current run of such frames
+    public double DropStart = -1;   // world time the held gesture went away; -1 = not pending
+
     // Triple-grab chain (see TripleGrab).
     public int TripleCount;
     public GrabGestureKind TripleKind;

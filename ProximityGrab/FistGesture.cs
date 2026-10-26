@@ -83,7 +83,12 @@ internal static class FistGesture
             state.PinchEngagedRing = false;
             state.GestureDriven = false;
         }
-        bool fistRaw = ProximityGrabMod.GestureMode && UpdateFist(ownHand, ref state.FistEngaged);
+        // While a release is pending, keep the held gesture latched so coming
+        // back only has to clear the looser release thresholds.
+        if (state.ProximityGrabActive && state.DropStart >= 0)
+            Relatch(state);
+        state.FilterDisagrees = false;
+        bool fistRaw = ProximityGrabMod.GestureMode && UpdateFist(ownHand, state);
         bool pinchRaw = ProximityGrabMod.GestureMode && UpdatePinchFingers(handler, ownHand, state);
         bool fist = ProximityGrabMod.FistGrabEnabled && fistRaw;
         bool pinch = ProximityGrabMod.PrecisionGrabEnabled && pinchRaw && !fist;
@@ -101,10 +106,28 @@ internal static class FistGesture
             : pinch ? GrabGestureKind.Pinch : GrabGestureKind.None;
 
         DrawDebug(handler, ownHand, state);
+        LogFilterRun(handler, state);
 
         if (state.ProximityGrabActive && gesture == GrabGestureKind.None)
         {
-            Release(handler, state);
+            double now = handler.Time.WorldTime;
+            if (state.DropStart < 0)
+                state.DropStart = now;
+            bool grace = ProximityGrabMod.ReleaseGraceEnabled
+                && ProximityGrabMod.GestureMode
+                && state.HasTrackingHands
+                && now - state.DropStart < ProximityGrabMod.ReleaseGraceSeconds;
+            if (grace)
+            {
+                Methods.HoldGrab.Invoke(handler, null);
+            }
+            else
+            {
+                if (ProximityGrabMod.GlitchLog && now > state.DropStart)
+                    Log(handler, $"released {state.ActiveGesture} after {(now - state.DropStart) * 1000:F0} ms delay");
+                state.DropStart = -1;
+                Release(handler, state);
+            }
         }
         else if (!state.ProximityGrabActive && gesture != GrabGestureKind.None)
         {
@@ -127,30 +150,96 @@ internal static class FistGesture
         }
         else if (state.ProximityGrabActive)
         {
+            if (state.DropStart >= 0)
+            {
+                if (ProximityGrabMod.GlitchLog)
+                    Log(handler, $"{state.ActiveGesture} dropped out for {(handler.Time.WorldTime - state.DropStart) * 1000:F0} ms and came back; kept holding");
+                state.DropStart = -1;
+            }
             Methods.HoldGrab.Invoke(handler, null);
         }
     }
 
-    private static bool UpdateFist(Hand? hand, ref bool prevEngaged)
+    private static void Relatch(ProximityGrabState state)
+    {
+        if (state.ActiveGesture == GrabGestureKind.Fist)
+            state.FistEngaged = true;
+        else if (state.ActiveGesture == GrabGestureKind.Pinch)
+        {
+            switch (state.GestureFinger)
+            {
+                case FingerType.Middle: state.PinchEngagedMiddle = true; break;
+                case FingerType.Ring: state.PinchEngagedRing = true; break;
+                default: state.PinchEngagedIndex = true; break;
+            }
+        }
+    }
+
+    // Median of this reading over the last GlitchMedianFrames frames, or the
+    // raw reading when the filter is off.
+    private static float Filtered(MedianFilter filter, float value)
+    {
+        if (!ProximityGrabMod.GlitchMedianEnabled)
+        {
+            filter.Reset();
+            return value;
+        }
+        return filter.Push(value, ProximityGrabMod.GlitchMedianFrames);
+    }
+
+    // Counts runs of frames where the median held a gesture decision the raw
+    // reading would have flipped, and logs each run's length when it ends.
+    private static void LogFilterRun(InteractionHandler handler, ProximityGrabState state)
+    {
+        if (state.FilterDisagrees)
+        {
+            state.FilterHiddenFrames++;
+            return;
+        }
+        if (state.FilterHiddenFrames > 0 && ProximityGrabMod.GlitchLog)
+            Log(handler, $"median filter hid a {state.FilterHiddenFrames}-frame flicker");
+        state.FilterHiddenFrames = 0;
+    }
+
+    private static void Log(InteractionHandler handler, string message)
+    {
+        string side = handler.Side.Value == Chirality.Left ? "L" : "R";
+        UniLog.Log($"ProximityGrab glitch {side}: {message}");
+    }
+
+    private static bool UpdateFist(Hand? hand, ProximityGrabState state)
     {
         if (!IsUsable(hand))
         {
-            prevEngaged = false;
+            state.FistEngaged = false;
+            state.FistAverage.Reset();
+            state.FistMin.Reset();
+            state.FistMinJoint.Reset();
             return false;
         }
         float avg = AverageCurlDegrees(hand!);
         float min = MinCurlDegrees(hand!);
         float minJoint = MinJointCurlDegrees(hand!);
-        bool engaged = prevEngaged
+        bool prev = state.FistEngaged;
+        bool raw = FistTest(prev, avg, min, minJoint);
+        bool engaged = FistTest(prev,
+            Filtered(state.FistAverage, avg),
+            Filtered(state.FistMin, min),
+            Filtered(state.FistMinJoint, minJoint));
+        if (raw != engaged)
+            state.FilterDisagrees = true;
+        state.FistEngaged = engaged;
+        return engaged;
+    }
+
+    private static bool FistTest(bool prevEngaged, float avg, float min, float minJoint) =>
+        prevEngaged
             ? avg > ProximityGrabMod.FistReleaseDegrees
               && min > ProximityGrabMod.FistMinReleaseDegrees
               && minJoint > ProximityGrabMod.FistMinJointReleaseDegrees
             : avg > ProximityGrabMod.FistEngageDegrees
               && min > ProximityGrabMod.FistMinEngageDegrees
               && minJoint > ProximityGrabMod.FistMinJointEngageDegrees;
-        prevEngaged = engaged;
-        return engaged;
-    }
 
     // Nearest engaged fingertip wins; each finger keeps its own hysteresis
     // memory so engage/release thresholds don't leak across fingers.
@@ -159,15 +248,15 @@ internal static class FistGesture
         bool pinchIndex = false, pinchMiddle = false, pinchRing = false;
         float dIndex = float.NaN, dMiddle = float.NaN, dRing = float.NaN;
         if (ProximityGrabMod.IndexPinchEnabled)
-            pinchIndex = UpdatePinchFinger(handler, hand, FingerType.Index, ref state.PinchEngagedIndex, out dIndex);
+            pinchIndex = UpdatePinchFinger(handler, hand, FingerType.Index, ref state.PinchEngagedIndex, state, 0, out dIndex);
         else
             state.PinchEngagedIndex = false;
         if (ProximityGrabMod.MiddlePinchEnabled)
-            pinchMiddle = UpdatePinchFinger(handler, hand, FingerType.Middle, ref state.PinchEngagedMiddle, out dMiddle);
+            pinchMiddle = UpdatePinchFinger(handler, hand, FingerType.Middle, ref state.PinchEngagedMiddle, state, 1, out dMiddle);
         else
             state.PinchEngagedMiddle = false;
         if (ProximityGrabMod.RingPinchEnabled)
-            pinchRing = UpdatePinchFinger(handler, hand, FingerType.Ring, ref state.PinchEngagedRing, out dRing);
+            pinchRing = UpdatePinchFinger(handler, hand, FingerType.Ring, ref state.PinchEngagedRing, state, 2, out dRing);
         else
             state.PinchEngagedRing = false;
 
@@ -182,43 +271,45 @@ internal static class FistGesture
         return pinchRaw;
     }
 
-    private static bool UpdatePinchFinger(InteractionHandler handler, Hand? hand, FingerType fingerType, ref bool prevEngaged, out float distance)
+    private static bool UpdatePinchFinger(InteractionHandler handler, Hand? hand, FingerType fingerType, ref bool prevEngaged,
+        ProximityGrabState state, int slot, out float distance)
     {
         distance = float.NaN;
-        if (hand == null)
-        {
-            prevEngaged = false;
-            return false;
-        }
-        Finger finger = hand[fingerType];
-        if (!IsUsableThumb(hand.Thumb)
-            || !IsUsableFinger(finger)
-            || !finger.Tip.IsTracking
+        MedianFilter distanceFilter = state.PinchDistance[slot];
+        MedianFilter curlFilter = state.PinchCurl[slot];
+        var root = handler.LocalUserRoot;
+        if (hand == null
+            || root == null
+            || !IsUsableThumb(hand.Thumb)
+            || !IsUsableFinger(hand[fingerType])
+            || !hand[fingerType].Tip.IsTracking
             || !hand.Thumb.Tip.IsTracking)
         {
             prevEngaged = false;
+            distanceFilter.Reset();
+            curlFilter.Reset();
             return false;
         }
-        var root = handler.LocalUserRoot;
-        if (root == null)
-        {
-            prevEngaged = false;
-            return false;
-        }
-        if (CurlDegrees(finger) >= ProximityGrabMod.PinchMaxIndexCurlDegrees)
-        {
-            prevEngaged = false;
-            return false;
-        }
+        Finger finger = hand[fingerType];
+        float curl = CurlDegrees(finger);
         float3 fingerTip = root.Slot.LocalPointToGlobal(finger.Tip.Position);
         float3 thumbTip = root.Slot.LocalPointToGlobal(hand.Thumb.Tip.Position);
-        distance = (fingerTip - thumbTip).Magnitude / root.GlobalScale;
-        bool engaged = prevEngaged
-            ? distance < ProximityGrabMod.PinchReleaseDistance
-            : distance < ProximityGrabMod.PinchEngageDistance;
+        float rawDistance = (fingerTip - thumbTip).Magnitude / root.GlobalScale;
+        distance = Filtered(distanceFilter, rawDistance);
+        bool raw = PinchTest(prevEngaged, curl, rawDistance);
+        bool engaged = PinchTest(prevEngaged, Filtered(curlFilter, curl), distance);
+        if (raw != engaged)
+            state.FilterDisagrees = true;
         prevEngaged = engaged;
         return engaged;
     }
+
+    // A finger curled past the limit is a fist forming, not a pinch.
+    private static bool PinchTest(bool prevEngaged, float curl, float distance) =>
+        !(curl >= ProximityGrabMod.PinchMaxIndexCurlDegrees)
+        && (prevEngaged
+            ? distance < ProximityGrabMod.PinchReleaseDistance
+            : distance < ProximityGrabMod.PinchEngageDistance);
 
     private static bool IsUsable(Hand? hand)
     {
