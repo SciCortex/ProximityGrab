@@ -9,14 +9,16 @@ using FrooxEngine;
 namespace ProximityGrab;
 
 // Tells when physical controllers are in use, so the gestures can stand down.
-// Seen on Quest 2 (InputSourceLog): picking up a controller switches Resonite
-// to a separate set of hand and controller devices, and the hand-tracking set
-// goes untracked. The hand-tracking set's controllers are stand-ins that ride
-// on the hands and never report a touch; real ones report touch, grip or
-// trigger from the first frame they're held. So a controller device that has
-// ever reported input is a real one, and while any real one is tracked, the
-// controllers are in use. The flag sticks to the device because the touch
-// sensors flicker while it's held.
+// Seen on Quest 2 (ProximityGrab's InputSourceLog): picking up a controller
+// takes the hand-tracking devices untracked for a moment, then a controller
+// device tracks (some sessions make a new set of devices, some reuse the
+// same ones). In hand tracking the controllers are stand-ins that ride on the
+// hands and never report a touch; real ones report touch, grip or trigger
+// from the first frame they're held. So a controller that has reported input
+// since it last became tracked is a real one, and while any real one is
+// tracked, the controllers are in use. The flag sticks while the device stays
+// tracked, because the touch sensors flicker while it's held, and clears when
+// it goes untracked, which every switch between the two modes passes through.
 internal static class ControllerGuard
 {
     private const float AnalogOn = 0.1f;
@@ -32,7 +34,10 @@ internal static class ControllerGuard
         foreach (var c in Controllers)
         {
             if (!c.IsTracking)
+            {
+                Real.Remove(c);
                 continue;
+            }
             if (!Real.Contains(c) && HasInput(c))
                 Real.Add(c);
             if (Real.Contains(c))
