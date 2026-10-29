@@ -66,64 +66,12 @@ public class ProximityGrabMod : ResoniteMod
         new("PinchMissFlashSeconds", "Seconds the missed-pinch effect lasts", () => 0.25f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> FistEngageDegreesKey =
-        new("FistEngageDegrees", "Avg finger curl degrees to engage fist grab", () => 150f, valueValidator: IsNonNegativeFinite);
+    internal static readonly ModConfigurationKey<bool> DoubleGrabEnabledKey =
+        new("DoubleGrabEnabled", "Grabbing twice in quick succession stashes the object on your avatar", () => true);
 
     [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> FistReleaseDegreesKey =
-        new("FistReleaseDegrees", "Avg finger curl degrees to release fist grab", () => 100f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> FistMinEngageDegreesKey =
-        new("FistMinEngageDegrees", "Finger min curl degrees to engage fist grab", () => 90f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> FistMinReleaseDegreesKey =
-        new("FistMinReleaseDegrees", "Finger min curl degrees to release fist grab", () => 70f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> FistMinJointEngageDegreesKey =
-        new("FistMinJointEngageDegrees", "Joint min angle to engage fist grab", () => 30f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> FistMinJointReleaseDegreesKey =
-        new("FistMinJointReleaseDegrees", "Joint min angle to release fist grab", () => 20f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PinchEngageDistanceKey =
-        new("PinchEngageDistance", "Index-thumb tip distance to engage pinch", () => 0.030f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PinchReleaseDistanceKey =
-        new("PinchReleaseDistance", "Index-thumb tip distance to release pinch", () => 0.050f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PinchMaxIndexCurlDegreesKey =
-        new("PinchMaxIndexCurlDegrees", "Pinching-finger curl above which pinch is rejected", () => 140f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PrecisionMinRadiusKey =
-        new("PrecisionMinRadius", "Pinch grab sphere sweep min radius", () => 0.004f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PrecisionMaxRadiusKey =
-        new("PrecisionMaxRadius", "Pinch grab sphere sweep max radius", () => 0.04f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PrecisionRadiusStepKey =
-        new("PrecisionRadiusStep", "Pinch grab sphere sweep radius step", () => 0.01f, valueValidator: IsNonNegativeFinite);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> TripleGrabEnabledKey =
-        new("TripleGrabEnabled", "Triple grab stashes the object on your avatar", () => true);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<int> TripleGrabCountKey =
-        new("TripleGrabCount", "Grabs in a row that stash the object (2 or 3)", () => 2, valueValidator: IsTwoOrThree);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> TripleGrabSecondsKey =
-        new("TripleGrabSeconds", "Max seconds between grabs of a triple grab", () => 0.4f, valueValidator: IsNonNegativeFinite);
+    internal static readonly ModConfigurationKey<float> DoubleGrabSecondsKey =
+        new("DoubleGrabSeconds", "Max seconds between the two grabs of a double grab", () => 0.4f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> TwoHandTetherKey =
@@ -176,23 +124,24 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool GestureMode = GestureModeKey.Value;
     internal static bool DisableWithControllers = DisableWithControllersKey.Value;
 
-    // Fist gesture (average curl, degrees + per-finger minimum, degrees)
-    internal static float FistEngageDegrees = FistEngageDegreesKey.Value;
-    internal static float FistReleaseDegrees = FistReleaseDegreesKey.Value;
-    internal static float FistMinEngageDegrees = FistMinEngageDegreesKey.Value;
-    internal static float FistMinReleaseDegrees = FistMinReleaseDegreesKey.Value;
-    internal static float FistMinJointEngageDegrees = FistMinJointEngageDegreesKey.Value;
-    internal static float FistMinJointReleaseDegrees = FistMinJointReleaseDegreesKey.Value;
+    // Fist gesture (average curl, degrees + per-finger minimum, degrees). Not
+    // configurable.
+    internal const float FistEngageDegrees = 150f;
+    internal const float FistReleaseDegrees = 100f;
+    internal const float FistMinEngageDegrees = 90f;
+    internal const float FistMinReleaseDegrees = 70f;
+    internal const float FistMinJointEngageDegrees = 30f;
+    internal const float FistMinJointReleaseDegrees = 20f;
 
-    // Pinch gesture (scale-normalized index <-> thumb tip distance, m)
-    internal static float PinchEngageDistance = PinchEngageDistanceKey.Value;
-    internal static float PinchReleaseDistance = PinchReleaseDistanceKey.Value;
-    internal static float PinchMaxIndexCurlDegrees = PinchMaxIndexCurlDegreesKey.Value;
+    // Pinch gesture (scale-normalized index <-> thumb tip distance, m). Not
+    // configurable.
+    internal const float PinchEngageDistance = 0.030f;
+    internal const float PinchReleaseDistance = 0.050f;
+    internal const float PinchMaxIndexCurlDegrees = 140f;
 
-    // Triple grab (stash held object under the user root)
-    internal static bool TripleGrabEnabled = TripleGrabEnabledKey.Value;
-    internal static int TripleGrabCount = TripleGrabCountKey.Value;
-    internal static float TripleGrabSeconds = TripleGrabSecondsKey.Value;
+    // Double grab (stash held object under the user root)
+    internal static bool DoubleGrabEnabled = DoubleGrabEnabledKey.Value;
+    internal static float DoubleGrabSeconds = DoubleGrabSecondsKey.Value;
 
     // Two-hand hold tether line
     internal static bool TwoHandTether = TwoHandTetherKey.Value;
@@ -205,10 +154,10 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool GlitchLog = GlitchLogKey.Value;
     internal static bool InputSourceLog = InputSourceLogKey.Value;
 
-    // Precision grab sphere sweep
-    internal static float PrecisionMinRadius = PrecisionMinRadiusKey.Value;
-    internal static float PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
-    internal static float PrecisionRadiusStep = PrecisionRadiusStepKey.Value;
+    // Precision grab sphere sweep (m). Not configurable.
+    internal const float PrecisionMinRadius = 0.004f;
+    internal const float PrecisionMaxRadius = 0.04f;
+    internal const float PrecisionRadiusStep = 0.01f;
 
     public override string Name => "ProximityGrab";
     public override string Author => "Shawn Betts";
@@ -235,8 +184,6 @@ public class ProximityGrabMod : ResoniteMod
         Msg("ProximityGrab loaded. Fist = proximity grab, pinch = precision grab (fist wins) while hands are tracked.");
     }
 
-    private static bool IsTwoOrThree(int value) => value is 2 or 3;
-
     private static bool IsMedianFrames(int value) => value >= 1 && value <= MedianFilter.MaxFrames;
 
     private static bool IsNonNegativeFinite(float value) =>
@@ -256,18 +203,8 @@ public class ProximityGrabMod : ResoniteMod
         PinchMissEffect = PinchMissEffectKey.Value;
         GestureMode = GestureModeKey.Value;
         DisableWithControllers = DisableWithControllersKey.Value;
-        FistEngageDegrees = FistEngageDegreesKey.Value;
-        FistReleaseDegrees = FistReleaseDegreesKey.Value;
-        FistMinEngageDegrees = FistMinEngageDegreesKey.Value;
-        FistMinReleaseDegrees = FistMinReleaseDegreesKey.Value;
-        FistMinJointEngageDegrees = FistMinJointEngageDegreesKey.Value;
-        FistMinJointReleaseDegrees = FistMinJointReleaseDegreesKey.Value;
-        PinchEngageDistance = PinchEngageDistanceKey.Value;
-        PinchReleaseDistance = PinchReleaseDistanceKey.Value;
-        PinchMaxIndexCurlDegrees = PinchMaxIndexCurlDegreesKey.Value;
-        TripleGrabEnabled = TripleGrabEnabledKey.Value;
-        TripleGrabCount = TripleGrabCountKey.Value;
-        TripleGrabSeconds = TripleGrabSecondsKey.Value;
+        DoubleGrabEnabled = DoubleGrabEnabledKey.Value;
+        DoubleGrabSeconds = DoubleGrabSecondsKey.Value;
         TwoHandTether = TwoHandTetherKey.Value;
         GlitchMedianEnabled = GlitchMedianEnabledKey.Value;
         GlitchMedianFrames = GlitchMedianFramesKey.Value;
@@ -275,12 +212,5 @@ public class ProximityGrabMod : ResoniteMod
         ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
         GlitchLog = GlitchLogKey.Value;
         InputSourceLog = InputSourceLogKey.Value;
-        PrecisionMinRadius =PrecisionMinRadiusKey.Value;
-        PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
-        PrecisionRadiusStep = Math.Max(PrecisionRadiusStepKey.Value, 0.0005f);
-        if (PinchEngageDistance >= PinchReleaseDistance)
-            PinchEngageDistance = PinchReleaseDistance * 0.5f;
-        if (PrecisionMinRadius >= PrecisionMaxRadius)
-            PrecisionMinRadius = PrecisionMaxRadius * 0.5f;
     }
 }

@@ -9,7 +9,7 @@ using FrooxEngine;
 
 namespace ProximityGrab;
 
-// Triple-grab confirmation: a faint two-armed spiral of dots swirling on the
+// Double-grab confirmation: a faint two-armed spiral of dots swirling on the
 // ground under the stashed object. Like MissEffect, it lives on per-handler
 // local (unsynced) slots built once and reused. Geometry is a unit-sized
 // spiral; the root slot's scale sets the size, so nothing regenerates mid-animation.

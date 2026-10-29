@@ -13,13 +13,13 @@ using HarmonyLib;
 
 namespace ProximityGrab;
 
-// Triple grab: TripleGrabCount (2 or 3, default 3) successful gesture grabs of the same kind (fist or pinch),
-// each within TripleGrabSeconds of the previous one, stash the held object on
+// Double grab: two successful gesture grabs of the same kind (fist or pinch),
+// the second within DoubleGrabSeconds of the first, stash the held object on
 // the user root so it follows the user around. The stash works by retargeting
 // the Grabbable's remembered pre-grab parent, so the engine's own release path
 // drops the object under the user root. The real parent is remembered here and
 // put back as soon as the object is grabbed again (Patch_Grabbable_Grab).
-internal static class TripleGrab
+internal static class DoubleGrab
 {
     private sealed class StashInfo
     {
@@ -34,26 +34,28 @@ internal static class TripleGrab
     // Called right after a gesture-driven grab succeeded.
     internal static void OnGestureGrab(InteractionHandler handler, ProximityGrabState state, GrabGestureKind kind)
     {
-        if (!ProximityGrabMod.TripleGrabEnabled || handler.World == Userspace.UserspaceWorld)
+        if (!ProximityGrabMod.DoubleGrabEnabled || handler.World == Userspace.UserspaceWorld)
         {
-            state.TripleCount = 0;
+            state.DoubleGrabArmed = false;
             return;
         }
         double now = handler.Time.WorldTime;
-        bool chained = state.TripleCount > 0
-            && state.TripleKind == kind
-            && now - state.TripleLastTime <= ProximityGrabMod.TripleGrabSeconds;
-        state.TripleCount = chained ? state.TripleCount + 1 : 1;
-        state.TripleKind = kind;
-        state.TripleLastTime = now;
-        if (state.TripleCount < ProximityGrabMod.TripleGrabCount)
+        bool second = state.DoubleGrabArmed
+            && state.DoubleGrabKind == kind
+            && now - state.DoubleGrabTime <= ProximityGrabMod.DoubleGrabSeconds;
+        if (!second)
+        {
+            state.DoubleGrabArmed = true;
+            state.DoubleGrabKind = kind;
+            state.DoubleGrabTime = now;
             return;
-        state.TripleCount = 0;
+        }
+        state.DoubleGrabArmed = false;
         Stash(handler);
     }
 
     // A miss breaks the chain.
-    internal static void OnGestureMiss(ProximityGrabState state) => state.TripleCount = 0;
+    internal static void OnGestureMiss(ProximityGrabState state) => state.DoubleGrabArmed = false;
 
     private static void Stash(InteractionHandler handler)
     {
@@ -113,7 +115,7 @@ internal static class Patch_Grabbable_Grab
             return;
         try
         {
-            TripleGrab.OnGrabbed(__instance);
+            DoubleGrab.OnGrabbed(__instance);
         }
         catch (Exception e)
         {
