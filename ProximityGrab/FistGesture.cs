@@ -144,9 +144,9 @@ internal static class FistGesture
             Methods.StartGrab.Invoke(handler, null);
             InputSourceLog.Event(handler, $"grab start {gesture} {(state.LastGrabResult ? "hit" : "miss")}");
             if (state.LastGrabResult)
-                DoubleGrab.OnGestureGrab(handler, state, gesture);
+                StashGrab.OnGestureGrab(handler, state, gesture);
             else
-                DoubleGrab.OnGestureMiss(state);
+                StashGrab.OnGestureMiss(state);
         }
         else if (state.ProximityGrabActive)
         {

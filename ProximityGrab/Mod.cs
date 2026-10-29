@@ -46,12 +46,12 @@ public class ProximityGrabMod : ResoniteMod
         new("PinchMissEffect", "Missed pinch visual effect", () => PinchMissEffectKind.Sparks);
 
     [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> DoubleGrabEnabledKey =
-        new("DoubleGrabEnabled", "Grabbing twice in quick succession stashes the object on your avatar", () => true);
+    internal static readonly ModConfigurationKey<bool> StashGrabEnabledKey =
+        new("StashGrabEnabled", "Grabbing twice in quick succession stashes the object on your avatar", () => true);
 
     [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> DoubleGrabSecondsKey =
-        new("DoubleGrabSeconds", "Max seconds between the two grabs of a double grab", () => 0.4f, valueValidator: IsNonNegativeFinite);
+    internal static readonly ModConfigurationKey<float> StashGrabSecondsKey =
+        new("StashGrabSeconds", "Max seconds between the two grabs of a stash grab", () => 0.4f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> TwoHandTetherKey =
@@ -113,9 +113,9 @@ public class ProximityGrabMod : ResoniteMod
     internal const float PinchReleaseDistance = 0.050f;
     internal const float PinchMaxIndexCurlDegrees = 140f;
 
-    // Double grab (stash held object under the user root)
-    internal static bool DoubleGrabEnabled = DoubleGrabEnabledKey.Value;
-    internal static float DoubleGrabSeconds = DoubleGrabSecondsKey.Value;
+    // Stash grab (stash held object under the user root)
+    internal static bool StashGrabEnabled = StashGrabEnabledKey.Value;
+    internal static float StashGrabSeconds = StashGrabSecondsKey.Value;
 
     // Two-hand hold tether line
     internal static bool TwoHandTether = TwoHandTetherKey.Value;
@@ -176,8 +176,8 @@ public class ProximityGrabMod : ResoniteMod
         PinchMissEffect = PinchMissEffectKey.Value;
         GestureMode = GestureModeKey.Value;
         DisableWithControllers = DisableWithControllersKey.Value;
-        DoubleGrabEnabled = DoubleGrabEnabledKey.Value;
-        DoubleGrabSeconds = DoubleGrabSecondsKey.Value;
+        StashGrabEnabled = StashGrabEnabledKey.Value;
+        StashGrabSeconds = StashGrabSecondsKey.Value;
         TwoHandTether = TwoHandTetherKey.Value;
         GlitchMedianEnabled = GlitchMedianEnabledKey.Value;
         GlitchMedianFrames = GlitchMedianFramesKey.Value;

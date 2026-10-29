@@ -44,10 +44,10 @@ internal sealed class ProximityGrabState
     // Last gesture written to the input-source log (see InputSourceLog).
     public GrabGestureKind LoggedGesture;
 
-    // Double grab: a first grab waiting for its second (see DoubleGrab).
-    public bool DoubleGrabArmed;
-    public GrabGestureKind DoubleGrabKind;
-    public double DoubleGrabTime;
+    // Stash grab: a first grab waiting for its second (see StashGrab).
+    public bool StashGrabArmed;
+    public GrabGestureKind StashGrabKind;
+    public double StashGrabTime;
 
     // Two-hand hold this hand takes part in (see TwoHandGrab); shared by both hands.
     public TwoHandSession? TwoHand;
@@ -58,7 +58,7 @@ internal sealed class ProximityGrabState
     // Missed-pinch feedback rig (local slots, built on first miss).
     public MissEffect? MissEffect;
 
-    // Double-grab stash confirmation (local slots, built on first stash).
+    // Stash-grab stash confirmation (local slots, built on first stash).
     public StashEffect? StashEffect;
 
     private static readonly ConditionalWeakTable<InteractionHandler, ProximityGrabState> Table = new();
