@@ -25,6 +25,7 @@ internal static class FistGesture
         var state = ProximityGrabState.Get(handler);
         MissEffect.Update(handler, state);
         StashEffect.Update(handler, state);
+        InputSourceLog.Update(handler);
 
         Devices.Clear();
         handler.World.InputInterface.GetDevices(Devices);
@@ -107,6 +108,11 @@ internal static class FistGesture
 
         DrawDebug(handler, ownHand, state);
         LogFilterRun(handler, state);
+        if (gesture != state.LoggedGesture)
+        {
+            InputSourceLog.Event(handler, $"gesture {state.LoggedGesture} -> {gesture}");
+            state.LoggedGesture = gesture;
+        }
 
         if (state.ProximityGrabActive && gesture == GrabGestureKind.None)
         {
@@ -126,6 +132,7 @@ internal static class FistGesture
                 if (ProximityGrabMod.GlitchLog && now > state.DropStart)
                     Log(handler, $"released {state.ActiveGesture} after {(now - state.DropStart) * 1000:F0} ms delay");
                 state.DropStart = -1;
+                InputSourceLog.Event(handler, $"release {state.ActiveGesture}");
                 Release(handler, state);
             }
         }
@@ -143,6 +150,7 @@ internal static class FistGesture
             state.GestureDriven = true;
             state.LastGrabResult = false;
             Methods.StartGrab.Invoke(handler, null);
+            InputSourceLog.Event(handler, $"grab start {gesture} {(state.LastGrabResult ? "hit" : "miss")}");
             if (state.LastGrabResult)
                 TripleGrab.OnGestureGrab(handler, state, gesture);
             else

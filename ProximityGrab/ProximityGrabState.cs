@@ -41,6 +41,9 @@ internal sealed class ProximityGrabState
     public int FilterHiddenFrames;  // length of the current run of such frames
     public double DropStart = -1;   // world time the held gesture went away; -1 = not pending
 
+    // Last gesture written to the input-source log (see InputSourceLog).
+    public GrabGestureKind LoggedGesture;
+
     // Triple-grab chain (see TripleGrab).
     public int TripleCount;
     public GrabGestureKind TripleKind;

@@ -145,6 +145,10 @@ public class ProximityGrabMod : ResoniteMod
     internal static readonly ModConfigurationKey<bool> GlitchLogKey =
         new("GlitchLog", "Log gesture flickers and release delays (for tuning)", () => true);
 
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> InputSourceLogKey =
+        new("InputSourceLog", "Log hand and controller device states and gesture grab events (for working out controller pickup detection)", () => true);
+
     internal static ModConfiguration? Config;
 
     // Gesture toggles (hot-path source of truth, mirrored from config).
@@ -194,6 +198,7 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool ReleaseGraceEnabled = ReleaseGraceEnabledKey.Value;
     internal static float ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
     internal static bool GlitchLog = GlitchLogKey.Value;
+    internal static bool InputSourceLog = InputSourceLogKey.Value;
 
     // Precision grab sphere sweep
     internal static float PrecisionMinRadius = PrecisionMinRadiusKey.Value;
@@ -263,6 +268,7 @@ public class ProximityGrabMod : ResoniteMod
         ReleaseGraceEnabled = ReleaseGraceEnabledKey.Value;
         ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
         GlitchLog = GlitchLogKey.Value;
+        InputSourceLog = InputSourceLogKey.Value;
         PrecisionMinRadius =PrecisionMinRadiusKey.Value;
         PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
         PrecisionRadiusStep = Math.Max(PrecisionRadiusStepKey.Value, 0.0005f);
