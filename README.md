@@ -39,7 +39,7 @@ Additionally the mod can be turned on/off from the Grabbing context menu.
 - **Controllers:** the gestures switch off while you're holding physical controllers, and back on when you put them down (`DisableWithControllers`). A controller counts as held once it reports a touch, grip or trigger. This was worked out on a Quest 2; if it misbehaves on your headset, turn it off and use the context menu toggle instead.
 - **Glitch filter:** the pinch and fist readings go through a short running median (`GlitchMedianEnabled`, `GlitchMedianFrames`), so a finger that twitches for a frame or two doesn't start or end a grab.
 - **Release delay:** a held grab waits `ReleaseGraceSeconds` (0.1 s) before letting go (`ReleaseGraceEnabled`), so a brief tracking dropout doesn't drop the object or count as a second grab.
-- `GlitchLog` writes these events to the Resonite log for tuning.
+- These events are written to the Resonite log for tuning (`GlitchLog` in `Mod.cs`, on by default).
 
 ### Behavior matrix
 

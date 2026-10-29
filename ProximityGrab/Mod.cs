@@ -38,20 +38,8 @@ public class ProximityGrabMod : ResoniteMod
         new("IndexPinch", "Index-thumb pinch triggers precision grab", () => true);
 
     [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> MiddlePinchEnabledKey =
-        new("MiddlePinch", "Middle-thumb pinch triggers precision grab", () => false);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> RingPinchEnabledKey =
-        new("RingPinch", "Ring-thumb pinch triggers precision grab", () => false);
-
-    [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
         new("DebugShowPinch", "Show grip debug visuals", () => false);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> DebugTextKey =
-        new("DebugText", "Show grip debug text overlay", () => false);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugPinchLinesKey =
@@ -60,10 +48,6 @@ public class ProximityGrabMod : ResoniteMod
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<PinchMissEffectKind> PinchMissEffectKey =
         new("PinchMissEffect", "Missed pinch visual effect", () => PinchMissEffectKind.Sparks);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<float> PinchMissFlashSecondsKey =
-        new("PinchMissFlashSeconds", "Seconds the missed-pinch effect lasts", () => 0.25f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DoubleGrabEnabledKey =
@@ -93,14 +77,6 @@ public class ProximityGrabMod : ResoniteMod
     internal static readonly ModConfigurationKey<float> ReleaseGraceSecondsKey =
         new("ReleaseGraceSeconds", "Seconds a gesture must stay gone before the grab releases", () => 0.1f, valueValidator: IsNonNegativeFinite);
 
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> GlitchLogKey =
-        new("GlitchLog", "Log gesture flickers and release delays (for tuning)", () => true);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> InputSourceLogKey =
-        new("InputSourceLog", "Log hand and controller device states and gesture grab events (for working out controller pickup detection)", () => false);
-
     internal static ModConfiguration? Config;
 
     // Gesture toggles (hot-path source of truth, mirrored from config).
@@ -108,16 +84,18 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool FistGrabEnabled = FistGrabEnabledKey.Value;
     internal static bool PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
     internal static bool IndexPinchEnabled = IndexPinchEnabledKey.Value;
-    internal static bool MiddlePinchEnabled = MiddlePinchEnabledKey.Value;
-    internal static bool RingPinchEnabled = RingPinchEnabledKey.Value;
+    // Middle- and ring-thumb pinches: off, set in source only.
+    internal static readonly bool MiddlePinchEnabled = false;
+    internal static readonly bool RingPinchEnabled = false;
     internal static bool DebugPinchLines = DebugPinchLinesKey.Value;
 
-    // Debug overlay (world-space text above each wrist)
+    // Debug visuals; the text overlay (world-space text above each wrist) is
+    // set in source only.
     internal static bool DebugShowPinch = DebugShowPinchKey.Value;
-    internal static bool DebugText = DebugTextKey.Value;
+    internal static readonly bool DebugText = false;
 
     // Missed-pinch feedback (brief local sphere at the pinch sweep)
-    internal static float PinchMissFlashSeconds = PinchMissFlashSecondsKey.Value;
+    internal const float PinchMissFlashSeconds = 0.25f;
     internal static PinchMissEffectKind PinchMissEffect = PinchMissEffectKey.Value;
 
     // Gesture mode (global on/off for both hands, toggled from the HandGrab menu)
@@ -151,8 +129,12 @@ public class ProximityGrabMod : ResoniteMod
     internal static int GlitchMedianFrames = GlitchMedianFramesKey.Value;
     internal static bool ReleaseGraceEnabled = ReleaseGraceEnabledKey.Value;
     internal static float ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
-    internal static bool GlitchLog = GlitchLogKey.Value;
-    internal static bool InputSourceLog = InputSourceLogKey.Value;
+
+    // Diagnostic logging, set in source only: gesture flickers and release
+    // delays (GlitchLog); hand/controller device states and grab events
+    // (InputSourceLog).
+    internal static readonly bool GlitchLog = true;
+    internal static readonly bool InputSourceLog = false;
 
     // Precision grab sphere sweep (m). Not configurable.
     internal const float PrecisionMinRadius = 0.004f;
@@ -194,12 +176,8 @@ public class ProximityGrabMod : ResoniteMod
         FistGrabEnabled = FistGrabEnabledKey.Value;
         PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
         IndexPinchEnabled = IndexPinchEnabledKey.Value;
-        MiddlePinchEnabled = MiddlePinchEnabledKey.Value;
-        RingPinchEnabled = RingPinchEnabledKey.Value;
         DebugPinchLines = DebugPinchLinesKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
-        DebugText = DebugTextKey.Value;
-        PinchMissFlashSeconds = PinchMissFlashSecondsKey.Value;
         PinchMissEffect = PinchMissEffectKey.Value;
         GestureMode = GestureModeKey.Value;
         DisableWithControllers = DisableWithControllersKey.Value;
@@ -210,7 +188,5 @@ public class ProximityGrabMod : ResoniteMod
         GlitchMedianFrames = GlitchMedianFramesKey.Value;
         ReleaseGraceEnabled = ReleaseGraceEnabledKey.Value;
         ReleaseGraceSeconds = ReleaseGraceSecondsKey.Value;
-        GlitchLog = GlitchLogKey.Value;
-        InputSourceLog = InputSourceLogKey.Value;
     }
 }
