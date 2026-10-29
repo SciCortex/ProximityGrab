@@ -32,13 +32,20 @@ To eliminate conflicting or duplicate actions, make sure you do not have any bin
 
 The config variables are registered with RML and can be interactively changed using a config mod like [RosoniteModSettings](https://github.com/badhaloninja/ResoniteModSettings).
 
-Additionally the mod can be turned on/off from the Grabbing context menu. This is useful if you switch to or from controllers in the game.
+Additionally the mod can be turned on/off from the Grabbing context menu.
+
+### Controllers and tracking glitches
+
+- **Controllers:** the gestures switch off while you're holding physical controllers, and back on when you put them down (`DisableWithControllers`). A controller counts as held once it reports a touch, grip or trigger. This was worked out on a Quest 2; if it misbehaves on your headset, turn it off and use the context menu toggle instead.
+- **Glitch filter:** the pinch and fist readings go through a short running median (`GlitchMedianEnabled`, `GlitchMedianFrames`), so a finger that twitches for a frame or two doesn't start or end a grab.
+- **Release delay:** a held grab waits `ReleaseGraceSeconds` (0.1 s) before letting go (`ReleaseGraceEnabled`), so a brief tracking dropout doesn't drop the object or count as a second grab.
+- `GlitchLog` writes these events to the Resonite log for tuning.
 
 ### Behavior matrix
 
 | State | Grab source | Result |
 |---|---|---|
-| No tracked hands | any | stock grab (laser + proximity) |
+| No tracked hands, or controllers held | any | stock grab (laser + proximity) |
 | VR controller grip | controller | stock grab (laser + proximity) |
 | Hands tracked | gamepad/keyboard | stock grab (laser + proximity) |
 | Hands tracked | fist gesture | proximity-only grab using grab sphere |
