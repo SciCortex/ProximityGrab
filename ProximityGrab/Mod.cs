@@ -22,6 +22,10 @@ public class ProximityGrabMod : ResoniteMod
         new("GestureMode", "Proximity Grabs Enabled", () => true);
 
     [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> DisableWithControllersKey =
+        new("DisableWithControllers", "Turn the grab gestures off while physical controllers are in use (a tracked controller that has reported a touch, grip or trigger)", () => true);
+
+    [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> FistGrabEnabledKey =
         new("FistGrabEnabled", "Fist gesture enabled", () => true);
 
@@ -170,6 +174,7 @@ public class ProximityGrabMod : ResoniteMod
 
     // Gesture mode (global on/off for both hands, toggled from the HandGrab menu)
     internal static bool GestureMode = GestureModeKey.Value;
+    internal static bool DisableWithControllers = DisableWithControllersKey.Value;
 
     // Fist gesture (average curl, degrees + per-finger minimum, degrees)
     internal static float FistEngageDegrees = FistEngageDegreesKey.Value;
@@ -250,6 +255,7 @@ public class ProximityGrabMod : ResoniteMod
         PinchMissFlashSeconds = PinchMissFlashSecondsKey.Value;
         PinchMissEffect = PinchMissEffectKey.Value;
         GestureMode = GestureModeKey.Value;
+        DisableWithControllers = DisableWithControllersKey.Value;
         FistEngageDegrees = FistEngageDegreesKey.Value;
         FistReleaseDegrees = FistReleaseDegreesKey.Value;
         FistMinEngageDegrees = FistMinEngageDegreesKey.Value;

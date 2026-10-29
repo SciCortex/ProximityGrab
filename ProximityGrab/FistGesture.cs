@@ -55,6 +55,11 @@ internal static class FistGesture
         bool vrActive = handler.World.InputInterface.VR_Active;
         if (!vrActive)
             anyHands = false;
+        // Controllers in hand: the hand built from controller input curls with
+        // the trigger and would read as a pinch. Treat it as no hands, which
+        // also releases a gesture grab.
+        if (ProximityGrabMod.DisableWithControllers && anyHands && ControllerGuard.InUse(handler.World.InputInterface))
+            anyHands = false;
 
         if (state.HasTrackingHands != anyHands)
         {
@@ -62,7 +67,7 @@ internal static class FistGesture
             handler.Input.InvalidateBindings();
         }
 
-        Hand? ownHand = vrActive ? (handler.Side.Value == Chirality.Left ? left : right) : null;
+        Hand? ownHand = anyHands ? (handler.Side.Value == Chirality.Left ? left : right) : null;
         // Mirror the RML GestureMode key into this hand's menu field so config-UI
         // edits appear within a frame, and rebuild bindings on mode transitions so
         // the controller grip bindings follow immediately from any source.
