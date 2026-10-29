@@ -58,7 +58,7 @@ internal sealed class ProximityGrabState
     // Missed-pinch feedback rig (local slots, built on first miss).
     public MissEffect? MissEffect;
 
-    // Stash-grab stash confirmation (local slots, built on first stash).
+    // Stash-grab confirmation (local slots, built on first stash).
     public StashEffect? StashEffect;
 
     private static readonly ConditionalWeakTable<InteractionHandler, ProximityGrabState> Table = new();
