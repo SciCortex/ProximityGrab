@@ -16,10 +16,6 @@ internal static class FistGesture
 {
     private static readonly List<Hand> Devices = new();
 
-    private static bool LastGestureMode = true;
-
-    public static bool HasTrackingHands { get; private set; }
-
     public static void Update(InteractionHandler handler)
     {
         var state = ProximityGrabState.Get(handler);
@@ -62,24 +58,14 @@ internal static class FistGesture
         if (ProximityGrabMod.DisableWithControllers && ControllerGuard.InUse(handler.World.InputInterface))
             anyHands = false;
 
-        if (state.HasTrackingHands != anyHands)
-        {
-            state.HasTrackingHands = anyHands;
-            handler.Input.InvalidateBindings();
-        }
+        state.HasTrackingHands = anyHands;
 
         Hand? ownHand = anyHands ? (handler.Side.Value == Chirality.Left ? left : right) : null;
         // Mirror the RML GestureMode key into this hand's menu field so config-UI
-        // edits appear within a frame, and rebuild bindings on mode transitions so
-        // the controller grip bindings follow immediately from any source.
+        // edits appear within a frame.
         ValueField<bool> gestureField = MenuPatches.GetGestureField(handler);
         if (gestureField.Value.Value != ProximityGrabMod.GestureMode)
             gestureField.Value.Value = ProximityGrabMod.GestureMode;
-        if (ProximityGrabMod.GestureMode != LastGestureMode)
-        {
-            LastGestureMode = ProximityGrabMod.GestureMode;
-            handler.Input.InvalidateBindings();
-        }
         if (!ProximityGrabMod.GestureMode)
         {
             // Gesture mode off: fully-stock behavior. Clear hysteresis memories so

@@ -151,7 +151,7 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> InputSourceLogKey =
-        new("InputSourceLog", "Log hand and controller device states and gesture grab events (for working out controller pickup detection)", () => true);
+        new("InputSourceLog", "Log hand and controller device states and gesture grab events (for working out controller pickup detection)", () => false);
 
     internal static ModConfiguration? Config;
 

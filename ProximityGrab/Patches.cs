@@ -104,45 +104,6 @@ internal static class Patch_InteractionHandler_Grab
     }
 }
 
-// While hands are tracked and gesture mode is on, unbind only VR-controller grab
-// sources so the grab command can never fire from a controller/skeleton false
-// positive; gamepad and keyboard/mouse grab bindings are kept. With gesture mode
-// off the stock controller grip bindings are left intact (fully-stock behavior).
-[HarmonyPatch(typeof(InputInterface))]
-[HarmonyPatch("Bind")]
-[HarmonyPatch(new System.Type[] { typeof(InputGroup) })]
-internal static class Patch_InputInterface_Bind
-{
-    [HarmonyPostfix]
-    private static void Postfix(InputGroup group)
-    {
-        try
-        {
-            if (!ProximityGrabMod.GestureMode)
-                return;
-            if (!FistGesture.HasTrackingHands)
-                return;
-            if (group is not InteractionHandlerInputs handlerInputs)
-                return;
-            if (group.Owner is not InteractionHandler handler || !handler.IsOwnedByLocalUser)
-                return;
-            RemoveControllerBindings(handlerInputs.Grab);
-        }
-        catch (System.Exception e)
-        {
-            UniLog.Error($"ProximityGrab: failed to strip grab bindings: {e}");
-        }
-    }
-
-    internal static void RemoveControllerBindings(DigitalAction grab)
-    {
-        var bindingsField = typeof(InputAction<bool>).GetField("_bindings", BindingFlags.NonPublic | BindingFlags.Instance);
-        if (bindingsField?.GetValue(grab) is not List<InputBinding<bool>> bindings)
-            return;
-        bindings.RemoveAll(b => b.ImplicitDevice is ControllerBase);
-    }
-}
-
 // "Proximity Gesture Grab" toggle in the hand's Grabbing context submenu.
 // The engine menu items are built inside an async continuation, so instead of
 // patching the builder we record the requested submenu (sync prefix on
