@@ -34,10 +34,6 @@ public class ProximityGrabMod : ResoniteMod
         new("PrecisionGrabEnabled", "Pinch grabs enabled (any finger)", () => true);
 
     [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> IndexPinchEnabledKey =
-        new("IndexPinch", "Index-thumb pinch triggers precision grab", () => true);
-
-    [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
         new("DebugShowPinch", "Show grip debug visuals", () => false);
 
@@ -83,8 +79,8 @@ public class ProximityGrabMod : ResoniteMod
     // Initialized from the keys so each default literal exists exactly once, above.
     internal static bool FistGrabEnabled = FistGrabEnabledKey.Value;
     internal static bool PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
-    internal static bool IndexPinchEnabled = IndexPinchEnabledKey.Value;
-    // Middle- and ring-thumb pinches: off, set in source only.
+    // Which fingers pinch with the thumb (set in source only).
+    internal static readonly bool IndexPinchEnabled = true;
     internal static readonly bool MiddlePinchEnabled = false;
     internal static readonly bool RingPinchEnabled = false;
     internal static bool DebugPinchLines = DebugPinchLinesKey.Value;
@@ -175,7 +171,6 @@ public class ProximityGrabMod : ResoniteMod
     {
         FistGrabEnabled = FistGrabEnabledKey.Value;
         PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
-        IndexPinchEnabled = IndexPinchEnabledKey.Value;
         DebugPinchLines = DebugPinchLinesKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
         PinchMissEffect = PinchMissEffectKey.Value;
