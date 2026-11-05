@@ -23,7 +23,7 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DisableWithControllersKey =
-        new("DisableWithControllers", "Turn the grab gestures off while physical controllers are in use (a tracked controller that has reported a touch, grip or trigger)", () => true);
+        new("DisableWithControllers", "Turn the grab gestures off while physical controllers are in use (a tracked controller that has reported a touch or grip; CyberFinger's buttons don't count)", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> FistGrabEnabledKey =
