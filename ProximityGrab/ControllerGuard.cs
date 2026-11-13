@@ -20,13 +20,16 @@ namespace ProximityGrab;
 // because the touch sensors flicker while it's held, and clears when it goes
 // untracked, which every switch between the two modes passes through.
 //
-// CyberFinger must not count: it's worn alongside hand tracking, and its
-// SteamVR binding simulates a Touch controller, so it arrives here as a
-// TouchController with the headset's own serial and render model, and nothing
-// about the device tells it from a real one. What does is its input: its
-// binding drives the buttons, joystick and analog trigger, but no touch
-// sensors and no analog grip. So for a TouchController the analog trigger is
-// left out; a real trigger can't be pulled without TriggerTouch.
+// CyberFinger must not count: it's worn alongside hand tracking, and it
+// simulates a Touch controller (its SteamVR binding on Windows, its WiVRn
+// driver on Linux), so it arrives here as a TouchController with the
+// headset's own serial and render model, and nothing about the device tells
+// it from a real one. What does is its input: it drives the buttons, joystick
+// and analog trigger, but no touch sensors. So for a TouchController only the
+// touch sensors count. A real trigger can't be pulled without TriggerTouch.
+// The analog grip is left out too: on Linux CyberFinger's grip button is one
+// (OpenXR's Touch controller has no grip click), so a real controller gripped
+// with no finger on a sensor doesn't count until one touches.
 internal static class ControllerGuard
 {
     private const float AnalogOn = 0.1f;
@@ -59,8 +62,7 @@ internal static class ControllerGuard
     {
         if (c is TouchController t)
             return t.TriggerTouch.Held || t.JoystickTouch.Held || t.ThumbRestTouch.Held
-                || t.ButtonXA_Touch.Held || t.ButtonYB_Touch.Held
-                || t.Grip.Value > AnalogOn;
+                || t.ButtonXA_Touch.Held || t.ButtonYB_Touch.Held;
         return c.TouchingStrength.Held || c.TouchingAxis.Held || c.Strength.Value > AnalogOn
             || c.ActionGrab.Held || c.ActionPrimary.Held;
     }
